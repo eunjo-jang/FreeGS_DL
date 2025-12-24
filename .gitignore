@@ -4,7 +4,6 @@
 *.geqdsk
 *.pdf
 *.h5
-*.png
 *.svg
 *.jpg
 FreeGS.egg-info/
@@ -15,3 +14,11 @@ freegs/_version.py
 asv_bench/.asv/
 docs/_build
 docs/generated
+
+# keep local only (do not track)
+inspect_dataset.py
+check_case_ab.py
+splits.json
+
+# allow images in this project
+!image/*.png
