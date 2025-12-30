@@ -29,7 +29,7 @@ FreeGS_DL/
 ## Requirements
 - Python 3.10+ (tested: Python 3.13.5 on macOS, MPS; CUDA auto-detected if available).
 - PyTorch (install matching your platform; see [pytorch.org](https://pytorch.org/get-started/locally/)).
-- FreeGS (installed editable from the bundled `freegs` folder one level up).
+- FreeGS (install separately; see below).
 - NumPy, SciPy (optional but recommended for smoother interpolation), Matplotlib, PyYAML.
 
 ## Quickstart
@@ -44,8 +44,12 @@ pip install --upgrade pip
 # Install PyTorch (choose command for your platform, e.g. CPU-only):
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-# Install FreeGS from the bundled source (one level up):
-pip install -e ..
+# Install FreeGS
+# Option A) pip (if available):
+# pip install freegs
+# Option B) from source (recommended):
+git clone https://github.com/fsmetana/freegs.git
+pip install -e freegs
 
 # Project deps
 pip install numpy scipy matplotlib pyyaml
