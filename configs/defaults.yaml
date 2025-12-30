@@ -1,0 +1,28 @@
+data_dir: "data/dataset_freegs"
+splits_path: "data/splits.json"
+checkpoint_path: "artifacts/mlp_best.pt"
+image_out_dir: "assets/image"
+
+train:
+  batch_size: 16
+  val_batch_size: 32
+  lr: 0.001
+  weight_decay: 1.0e-06
+  max_epochs: 400
+  patience: 30
+  seed: 42
+
+model:
+  in_dim: 41
+  out_dim: 4225   # 65 x 65
+
+generate:
+  n_samples: 200
+  seed: 0
+  nx: 65
+  ny: 65
+  Rmin: 0.1
+  Rmax: 2.0
+  Zmin: -1.0
+  Zmax: 1.0
+

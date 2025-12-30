@@ -3,31 +3,34 @@
 ⚠️ Work-in-progress baseline; outputs are rough and need improvement.
 
 ## What this project does
-- Use FreeGS (a Grad–Shafranov solver) to generate synthetic magnetic equilibria and sensor readings (flux loops, magnetic probes, Rogowski).
+- Use FreeGS (Grad–Shafranov solver) to generate synthetic tokamak equilibria and sensor readings (flux loops, magnetic probes, Rogowski).
 - Train a simple MLP to map 1D sensor features to a 2D normalized psi grid.
-- Evaluate and visualize ground truth vs prediction contours (see `image/`).
+- Evaluate and visualize ground truth vs prediction contours.
 
-## Repo Layout (FreeGS_DL/)
+## Layout
 ```
 FreeGS_DL/
-├─ generate_dataset_freegs.py     # synth equilibria + sensor sampling → X.npy, Y_psi.npy, meta.json, sensors.json
-├─ make_splits.py                 # splits.json (train/val/test indices, seed=42)
-├─ train_baseline_mlp.py          # MLP training, saves mlp_best.pt (includes x_mean/x_std)
-├─ eval_and_plot.py               # eval + contour plots (GT vs Pred)
-├─ inspect_dataset.py             # quick dataset inspection
-├─ check_case_ab.py               # sample-case sanity checks
-├─ dataset_freegs/                # included dataset (current: X.npy (121, 41), Y_psi.npy (121, 65, 65))
-├─ image/                         # eval_plot_Figure_1~4_(True|Pred).png
-├─ splits.json                    # train/val/test indices
-├─ mlp_best.pt                    # best checkpoint
+├─ configs/defaults.yaml      # config for paths, seeds, hparams
+├─ data/dataset_freegs/       # generated data (X.npy, Y_psi.npy, meta.json, sensors.json)
+├─ data/splits.json           # generated split indices (ignored by git; regenerate)
+├─ assets/image/              # saved plots (GT vs Pred)
+├─ artifacts/mlp_best.pt      # best checkpoint (x_mean/x_std included)
+├─ src/
+│   ├─ data_gen.py            # data generation (FreeGS → X/Y/meta/sensors)
+│   ├─ splits.py              # make train/val/test splits
+│   ├─ dataset.py             # torch Dataset + loading helpers
+│   ├─ model.py               # MLP definition
+│   ├─ train.py               # training loop + early stopping
+│   └─ eval.py                # evaluation + plotting
+├─ scripts/                   # optional helper shell scripts (empty by default)
 └─ README.md
 ```
 
 ## Requirements
 - Python 3.10+ (tested: Python 3.13.5 on macOS, MPS; CUDA auto-detected if available).
 - PyTorch (install matching your platform; see [pytorch.org](https://pytorch.org/get-started/locally/)).
-- FreeGS (installed in editable mode from the bundled `freegs/` directory).
-- NumPy, SciPy (optional but recommended for smoother interpolation), Matplotlib.
+- FreeGS (installed editable from the bundled `freegs` folder one level up).
+- NumPy, SciPy (optional but recommended for smoother interpolation), Matplotlib, PyYAML.
 
 ## Quickstart
 ```bash
@@ -38,58 +41,45 @@ python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install --upgrade pip
 
-# Install PyTorch (pick command for your platform, e.g. CPU-only):
+# Install PyTorch (choose command for your platform, e.g. CPU-only):
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-# Install FreeGS from the bundled source (editable):
+# Install FreeGS from the bundled source (one level up):
 pip install -e ..
 
-# Project-level deps
-pip install numpy scipy matplotlib
+# Project deps
+pip install numpy scipy matplotlib pyyaml
 ```
 
-> `dataset_freegs/` and `image/` are already included, so you can train/eval right away. Regenerate if you want fresh data.
+## Pipeline (new entrypoints)
+- Generate data (defaults: 200 samples, 65×65 grid):
+  ```
+  python -m src.data_gen --config configs/defaults.yaml
+  # outputs to data/dataset_freegs/{X.npy,Y_psi.npy,meta.json,sensors.json}
+  ```
+- Make splits (seed from config):
+  ```
+  python -m src.splits --config configs/defaults.yaml
+  # writes data/splits.json (ignored by git)
+  ```
+- Train baseline MLP:
+  ```
+  python -m src.train --config configs/defaults.yaml
+  # saves best to artifacts/mlp_best.pt (with x_mean/x_std)
+  ```
+- Evaluate & save plots:
+  ```
+  python -m src.eval --config configs/defaults.yaml --num-examples 4
+  # saves images to assets/image/
+  ```
 
-## Data Generation
-```bash
-python generate_dataset_freegs.py
-# outputs to dataset_freegs/:
-#   X.npy        (N, n_features) = (N, 41)
-#   Y_psi.npy    (N, 65, 65)
-#   meta.json    (per-sample metadata and solve status)
-#   sensors.json (sensor locations)
-```
-Defaults: 200 samples, grid 65×65. Adjust by editing `main()` params or calling `main(out_dir=..., n_samples=..., ...)` inside the script.
+## Notes & gaps
+- Model is a simple fully-connected MLP; predictions are noisy. Consider CNN/U-Net or better conditioning for improved spatial fidelity.
+- Randomness: split seed is fixed; training loop has no deterministic mode beyond seeding, so results may vary slightly.
+- SciPy is optional; without it, interpolation falls back to nearest-neighbor.
 
-## Train/Val/Test Split
-```bash
-python make_splits.py   # seed=42; saves splits.json
-```
-
-## Train Baseline MLP
-```bash
-python train_baseline_mlp.py
-# uses DEVICE=mps|cuda|cpu automatically
-# saves best checkpoint to mlp_best.pt (with x_mean/x_std)
-```
-Training normalizes inputs using train statistics and normalizes each psi target per-sample to [0,1]. Early stopping patience=30 epochs, max 400 epochs.
-
-## Evaluate & Plot
-```bash
-python eval_and_plot.py
-# prints mean test MSE (on normalized psi)
-# shows GT vs. predicted contours for a few test samples
-```
-If you want files instead of pop-up windows, replace the `plt.show()` calls with `plt.savefig("image/<name>.png")` (existing figures in `image/` were produced this way).
-
-## Notes & Known Gaps
-- Baseline model is intentionally simple (fully-connected); results are still noisy. Consider CNN/U-Net or richer conditioning for better spatial fidelity.
-- Randomness is only partially controlled (split seed=42; training loop has no explicit torch seed), so exact metrics may vary slightly.
-- SciPy is optional; without it, interpolation falls back to nearest-neighbor and can be less smooth.
-
-## Repro Checklist
-- [ ] Confirm Python & torch versions (and whether MPS/CUDA was used).
-- [ ] Keep `dataset_freegs/` under the repo or provide download instructions if you don’t want to regenerate.
-- [ ] Include representative figures in `image/` (GT vs. pred) for quick inspection.
-- [ ] Add a license file if publishing publicly.
+## Current included data/artifacts
+- `data/dataset_freegs/` currently contains X.npy (121, 41) and Y_psi.npy (121, 65, 65) from an earlier run.
+- `artifacts/mlp_best.pt` is a checkpoint from that run.
+- `assets/image/` has the corresponding GT vs Pred contour PNGs.
 
