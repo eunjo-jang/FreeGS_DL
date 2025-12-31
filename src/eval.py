@@ -1,4 +1,3 @@
-import argparse
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -15,6 +14,7 @@ def evaluate(cfg, ckpt_path: Path, save_dir: Path, num_examples: int = 4):
     splits_path = Path(cfg["splits_path"])
 
     X, Y, splits = load_data_and_splits(data_dir, splits_path)
+    ny, nx = Y.shape[1], Y.shape[2]
     test_idx = np.array(splits["test_idx"])
 
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
@@ -26,17 +26,28 @@ def evaluate(cfg, ckpt_path: Path, save_dir: Path, num_examples: int = 4):
     model.eval()
 
     mse_list = []
+    relerr_list = []
+    spatial_mse_acc = np.zeros((ny, nx), dtype=np.float64)
+    eps = 1e-12
     with torch.no_grad():
         for k in test_idx:
             x = (X[k:k+1] - x_mean) / x_std
             psi_gt = Y[k]
-            psi_gt_n, mn, mx = normalize_psi(psi_gt)
-            pred_n = model(torch.from_numpy(x).to(device)).cpu().numpy().reshape(65, 65)
-            mse = float(np.mean((pred_n - psi_gt_n) ** 2))
+            psi_gt_n, _, _ = normalize_psi(psi_gt)
+            pred_n = model(torch.from_numpy(x).to(device)).cpu().numpy().reshape(ny, nx)
+            diff = pred_n - psi_gt_n
+            mse = float(np.mean(diff ** 2))
+            relerr = float(np.linalg.norm(diff) / (np.linalg.norm(psi_gt_n) + eps))
+            spatial_mse_acc += diff ** 2
             mse_list.append(mse)
+            relerr_list.append(relerr)
 
     mean_mse = float(np.mean(mse_list))
-    print(f"Test MSE (psi normalized): mean={mean_mse:.6f} min={min(mse_list):.6f} median={np.median(mse_list):.6f} max={max(mse_list):.6f}")
+    spatial_mse = spatial_mse_acc / len(test_idx)
+
+    print(f"[Primary] Test MSE (psi normalized): mean={mean_mse:.6f} min={min(mse_list):.6f} median={np.median(mse_list):.6f} max={max(mse_list):.6f}")
+    print(f"[RelErr ] L2 relative error: mean={np.mean(relerr_list):.6f} min={min(relerr_list):.6f} median={np.median(relerr_list):.6f} max={max(relerr_list):.6f}")
+    print(f"[Spatial] Spatial MSE map stats: mean={spatial_mse.mean():.6f} min={spatial_mse.min():.6f} median={np.median(spatial_mse):.6f} max={spatial_mse.max():.6f}")
 
     ensure_dir(save_dir)
     show_n = min(num_examples, len(test_idx))
@@ -46,7 +57,7 @@ def evaluate(cfg, ckpt_path: Path, save_dir: Path, num_examples: int = 4):
         psi_gt = Y[k]
         psi_gt_n, _, _ = normalize_psi(psi_gt)
         with torch.no_grad():
-            pred_n = model(torch.from_numpy(x).to(device)).cpu().numpy().reshape(65, 65)
+            pred_n = model(torch.from_numpy(x).to(device)).cpu().numpy().reshape(ny, nx)
 
         fig = plt.figure()
         plt.contour(psi_gt_n, levels=30)
