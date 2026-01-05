@@ -39,8 +39,8 @@ FreeGS_DL/
 
 ## Quickstart
 ```bash
-git clone <your-repo-url>
-cd freegs/FreeGS_DL
+git clone https://github.com/eunjo-jang/FreeGS_DL.git
+cd FreeGS_DL
 
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate

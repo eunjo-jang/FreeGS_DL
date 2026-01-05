@@ -13,3 +13,4 @@ freeqdsk>=0.1.0
 # Install FreeGS from the parent folder in editable mode
 -e ..
 
+
