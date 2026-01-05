@@ -1,0 +1,36 @@
+data_dir: "data/dataset_freegs"
+splits_path: "data/splits.json"
+checkpoint_path: "checkpoints/deeponet_best.pt"
+image_out_dir: "figures/deeponet"
+
+train:
+  batch_size: 16
+  val_batch_size: 32
+  lr: 0.001
+  weight_decay: 1.0e-06
+  max_epochs: 400
+  patience: 30
+  seed: 42
+
+  # Coord-MLP와 동일하게 유지 (공정 비교)
+  points_per_sample: 1024
+
+model:
+  name: "deeponet"
+
+  # Branch network (sensor encoder)
+  in_dim: 41          # sensor dimension (X)
+
+  # DeepONet-specific
+  latent_dim: 64      # p: number of basis / coefficients
+  hidden: [128, 128]  # branch & trunk MLP hidden layers
+
+generate:
+  n_samples: 200
+  seed: 0
+  nx: 65
+  ny: 65
+  Rmin: 0.1
+  Rmax: 2.0
+  Zmin: -1.0
+  Zmax: 1.0

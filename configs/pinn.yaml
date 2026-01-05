@@ -1,7 +1,7 @@
 data_dir: "data/dataset_freegs"
 splits_path: "data/splits.json"
-checkpoint_path: "artifacts/mlp_best.pt"
-image_out_dir: "assets/image"
+checkpoint_path: "checkpoints/pinn_best.pt"
+image_out_dir: "figures/pinn"
 
 train:
   batch_size: 16
@@ -12,9 +12,16 @@ train:
   patience: 30
   seed: 42
 
+  # PINN-specific
+  lambda_phys: 1.0e-4   # physics loss weight (중요!)
+
+  # Coord-MLP / DeepONet과 동일
+  points_per_sample: 1024
+
 model:
+  name: "pinn"
   in_dim: 41
-  out_dim: 4225   # 65 x 65
+  hidden: [256, 512, 256]
 
 generate:
   n_samples: 200
@@ -25,4 +32,3 @@ generate:
   Rmax: 2.0
   Zmin: -1.0
   Zmax: 1.0
-

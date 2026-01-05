@@ -10,18 +10,23 @@
 ## Layout
 ```
 FreeGS_DL/
-├─ configs/defaults.yaml      # config for paths, seeds, hparams
+├─ configs/                   # per-model configs (mlp.yaml, coord_mlp.yaml, ...)
 ├─ data/dataset_freegs/       # generated data (X.npy, Y_psi.npy, meta.json, sensors.json)
 ├─ data/splits.json           # generated split indices (ignored by git; regenerate)
-├─ assets/image/              # saved plots (GT vs Pred)
-├─ artifacts/mlp_best.pt      # best checkpoint (x_mean/x_std included)
+├─ figures/                   # saved plots per model (GT vs Pred)
+├─ checkpoints/               # checkpoints (mlp_best.pt, coord_mlp_best.pt, ...)
 ├─ src/
 │   ├─ data_gen.py            # data generation (FreeGS → X/Y/meta/sensors)
 │   ├─ splits.py              # make train/val/test splits
 │   ├─ dataset.py             # torch Dataset + loading helpers
-│   ├─ model.py               # MLP definition
-│   ├─ train.py               # training loop + early stopping
-│   └─ eval.py                # evaluation + plotting
+│   ├─ models/                # model zoo
+│   │    ├─ mlp.py            # baseline MLP
+│   │    ├─ coord_mlp.py      # coord-aug MLP (placeholder)
+│   │    ├─ deeponet.py       # DeepONet-style (placeholder)
+│   │    └─ pinn.py            # PINN-style (placeholder)
+│   │    
+│   ├─ train.py               # training loop (model selection via config)
+│   └─ eval.py                # evaluation + plotting (supports coord_mlp pointwise eval)
 ├─ scripts/                   # optional helper shell scripts (empty by default)
 └─ README.md
 ```
@@ -55,35 +60,59 @@ pip install -e freegs
 pip install numpy scipy matplotlib pyyaml
 ```
 
-## Pipeline (new entrypoints)
+## Pipeline (choose config per model)
 - Generate data (defaults: 200 samples, 65×65 grid):
   ```
-  python -m src.data_gen --config configs/defaults.yaml
+  python -m src.data_gen --config configs/mlp.yaml
   # outputs to data/dataset_freegs/{X.npy,Y_psi.npy,meta.json,sensors.json}
   ```
 - Make splits (seed from config):
   ```
-  python -m src.splits --config configs/defaults.yaml
+  python -m src.splits --config configs/mlp.yaml
   # writes data/splits.json (ignored by git)
   ```
-- Train baseline MLP:
+- Train model (select via config `model.name`: mlp, coord_mlp, deeponet, pinn, cnn):
   ```
-  python -m src.train --config configs/defaults.yaml
-  # saves best to artifacts/mlp_best.pt (with x_mean/x_std)
+  python -m src.train --config configs/mlp.yaml
+# saves best to checkpoints/<model>_best.pt (with x_mean/x_std)
   ```
 - Evaluate & save plots:
   ```
-  python -m src.eval --config configs/defaults.yaml --num-examples 4
-  # saves images to assets/image/
+  python -m src.eval --config configs/mlp.yaml --num-examples 4
+# saves images to figures/<model>/
   ```
 
-## Notes & gaps
-- Model is a simple fully-connected MLP; predictions are noisy. Consider CNN/U-Net or better conditioning for improved spatial fidelity.
-- Randomness: split seed is fixed; training loop has no deterministic mode beyond seeding, so results may vary slightly.
-- SciPy is optional; without it, interpolation falls back to nearest-neighbor.
-
-## Current included data/artifacts
+## Current included data/checkpoints/figures
 - `data/dataset_freegs/` currently contains X.npy (121, 41) and Y_psi.npy (121, 65, 65) from an earlier run.
-- `artifacts/mlp_best.pt` is a checkpoint from that run.
-- `assets/image/` has the corresponding GT vs Pred contour PNGs.
+- `checkpoints/*.pt` are the saved model weights (per model).
+- `figures/<model>/` holds generated plots per model; `figures/gt/` keeps the reference plots.
+
+## Quick usage (train & eval)
+```bash
+cd freegs/FreeGS_DL
+
+# (once) create env & install deps
+python -m venv .venv && source .venv/bin/activate
+pip install --upgrade pip
+pip install torch --index-url https://download.pytorch.org/whl/cpu   # choose CUDA wheel on GPU
+pip install -r requirements.txt
+
+# train
+python -m src.train --config configs/mlp.yaml
+# -> saves to checkpoints/mlp_best.pt
+
+# eval & plot
+python -m src.eval --config configs/mlp.yaml --num-examples 4
+# -> saves plots to figures/mlp/
+```
+
+## Experiment results 
+| Model      | MSE  | RelErr  | Spatial MSE  |
+|------------|------------|---------------|--------------------|
+| mlp        | 0.003460        | 0.062236          | 0.003460                |
+| coord_mlp  | **0.000238**       | 0.024426         | **0.000238**             |
+| deeponet   | 0.000324        | 0.027931          | 0.000324               |
+| pinn       |0.000243        | **0.023670**          | 0.000243                |
+
+> Run `python -m src.eval --config configs/<model>.yaml` to populate the metrics and plots.
 

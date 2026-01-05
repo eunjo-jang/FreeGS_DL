@@ -1,3 +1,4 @@
+# ruff: noqa: E722,BLE001
 import os
 import json
 import numpy as np
@@ -5,15 +6,16 @@ import numpy as np
 import freegs
 from src.utils import ensure_dir, load_config, parse_common_args
 
-# optional interpolation
+# Optional interpolation (SciPy gives smoother interpolation; fallback is nearest)
 try:
     from scipy.interpolate import RegularGridInterpolator
     _HAS_SCIPY = True
-except Exception:
+except ImportError:
     _HAS_SCIPY = False
 
 
 def make_sensor_layout():
+    """Define synthetic sensor positions (flux loops + magnetic probes)."""
     flux_loops = [
         (1.75, 0.20), (1.75, -0.20),
         (1.55, 0.70), (1.55, -0.70),
@@ -28,6 +30,7 @@ def make_sensor_layout():
 
 
 def interp2d(r1d, z1d, field2d):
+    """Return an interpolator over (R,Z) for a 2D field."""
     if _HAS_SCIPY:
         itp = RegularGridInterpolator((z1d, r1d), field2d, bounds_error=False, fill_value=np.nan)
         return lambda R, Z: float(itp([[Z, R]])[0])
@@ -40,6 +43,7 @@ def interp2d(r1d, z1d, field2d):
 
 
 def compute_BR_BZ(r1d, z1d, psi2d):
+    """Compute magnetic field components from psi grid."""
     dpsi_dz, dpsi_dr = np.gradient(psi2d, z1d, r1d)
     Rmesh = np.tile(r1d.reshape(1, -1), (len(z1d), 1))
     BR = -(1.0 / (Rmesh + 1e-12)) * dpsi_dz
@@ -48,6 +52,7 @@ def compute_BR_BZ(r1d, z1d, psi2d):
 
 
 def sample_case(rng):
+    """Sample one random equilibrium scenario."""
     paxis = float(rng.uniform(5e2, 5e3))
     Ip = float(rng.uniform(1e5, 6e5))
     fvac = float(rng.uniform(0.8, 2.5))
@@ -67,12 +72,14 @@ def main():
     ensure_dir(out_dir)
     rng = np.random.default_rng(gcfg["seed"])
 
+    # Persist sensor layout for later inspection/visualization
     sensors = make_sensor_layout()
-    with open(os.path.join(out_dir, "sensors.json"), "w") as f:
+    with open(os.path.join(out_dir, "sensors.json"), "w", encoding="utf-8") as f:
         json.dump(sensors, f, indent=2)
 
     X_list, Ypsi_list, meta = [], [], []
 
+    # Generate synthetic equilibria + corresponding sensor readings
     for _ in range(gcfg["n_samples"]):
         case = sample_case(rng)
         tokamak = freegs.machine.TestTokamak()
@@ -88,7 +95,8 @@ def main():
 
         try:
             freegs.solve(eq, profiles, constrain, show=False)
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
+            # Skip failed solves but keep error metadata
             meta.append({**case, "ok": False, "error": str(e)})
             continue
 
@@ -117,12 +125,13 @@ def main():
         Ypsi_list.append(np.asarray(psi2d, dtype=np.float32))
         meta.append({**case, "ok": True})
 
+    # Save dataset arrays and metadata
     X = np.stack(X_list, axis=0)
     Ypsi = np.stack(Ypsi_list, axis=0)
 
     np.save(os.path.join(out_dir, "X.npy"), X)
     np.save(os.path.join(out_dir, "Y_psi.npy"), Ypsi)
-    with open(os.path.join(out_dir, "meta.json"), "w") as f:
+    with open(os.path.join(out_dir, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
 
     print(f"Saved to {out_dir}")

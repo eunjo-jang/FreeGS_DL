@@ -1,0 +1,15 @@
+# Core runtime (install torch build matching your platform/CPU-GPU)
+torch>=2.3.0
+
+# FreeGS and numeric stack
+numpy>=1.25.0
+scipy>=1.11.0
+matplotlib>=3.8.0
+pyyaml>=6.0.1
+h5py>=2.10.0
+Shapely>=1.7.1
+freeqdsk>=0.1.0
+
+# Install FreeGS from the parent folder in editable mode
+-e ..
+

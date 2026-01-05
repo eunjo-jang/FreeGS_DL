@@ -11,15 +11,17 @@ def main():
     data_dir = cfg["data_dir"]
     splits_path = cfg["splits_path"]
 
+    # Load features only to know dataset length
     X = np.load(f"{data_dir}/X.npy")
     N = X.shape[0]
 
+    # Shuffle indices reproducibly
     rng = np.random.default_rng(cfg["train"]["seed"])
     idx = rng.permutation(N)
 
+    # Simple 75/12/13 split
     n_train = int(0.75 * N)
     n_val = int(0.12 * N)
-    n_test = N - n_train - n_val
 
     splits = {
         "seed": cfg["train"]["seed"],
@@ -30,7 +32,7 @@ def main():
 
     # ensure target directory exists
     ensure_dir(str(Path(splits_path).parent))
-    with open(splits_path, "w") as f:
+    with open(splits_path, "w", encoding="utf-8") as f:
         json.dump(splits, f, indent=2)
 
     print(f"Saved splits to {splits_path}")

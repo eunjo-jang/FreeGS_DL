@@ -1,0 +1,30 @@
+data_dir: "data/dataset_freegs"
+splits_path: "data/splits.json"
+checkpoint_path: "checkpoints/coord_mlp_best.pt"
+image_out_dir: "figures/coord_mlp"
+
+train:
+  batch_size: 16
+  val_batch_size: 32
+  lr: 0.001
+  weight_decay: 1.0e-06
+  max_epochs: 400
+  patience: 30
+  seed: 42
+
+model:
+  name: "coord_mlp"
+  in_dim: 41   # update if you append coordinate features
+  out_dim: 1
+  hidden: [256, 512, 256]
+
+generate:
+  n_samples: 200
+  seed: 0
+  nx: 65
+  ny: 65
+  Rmin: 0.1
+  Rmax: 2.0
+  Zmin: -1.0
+  Zmax: 1.0
+
