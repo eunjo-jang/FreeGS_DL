@@ -60,7 +60,7 @@ pip install -e freegs
 pip install numpy scipy matplotlib pyyaml
 ```
 
-## Pipeline (choose config per model)
+## Pipeline 
 - Generate data (defaults: 200 samples, 65×65 grid):
   ```
   python -m src.data_gen --config configs/mlp.yaml
@@ -73,21 +73,15 @@ pip install numpy scipy matplotlib pyyaml
   ```
 - Train model (select via config `model.name`: mlp, coord_mlp, deeponet, pinn, cnn):
   ```
-  python -m src.train --config configs/mlp.yaml
-# saves best to checkpoints/<model>_best.pt (with x_mean/x_std)
+  python -m src.train --config configs/mlp.yaml  
   ```
 - Evaluate & save plots:
   ```
   python -m src.eval --config configs/mlp.yaml --num-examples 4
-# saves images to figures/<model>/
+  # saves images to figures/<model>/
   ```
 
-## Current included data/checkpoints/figures
-- `data/dataset_freegs/` currently contains X.npy (121, 41) and Y_psi.npy (121, 65, 65) from an earlier run.
-- `checkpoints/*.pt` are the saved model weights (per model).
-- `figures/<model>/` holds generated plots per model; `figures/gt/` keeps the reference plots.
-
-## Quick usage (train & eval)
+## Quick usage 
 ```bash
 cd freegs/FreeGS_DL
 
